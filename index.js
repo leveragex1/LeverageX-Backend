@@ -21,7 +21,8 @@ const PORT = process.env.PORT || 8080;
 const allowedOrigins = [
   // 'https://leveragex.onrender.com',  // Old domain
   // 'https://leveragex.in',            // New domain
-  'https://leveragex-frontend.onrender.com',
+  // 'https://leveragex-frontend.onrender.com',
+  'https://leveragex-605d.onrender.com',
   'http://localhost:3000'            // Local development environment
 ];
 
