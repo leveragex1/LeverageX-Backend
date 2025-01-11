@@ -22,7 +22,7 @@ const allowedOrigins = [
   // 'https://leveragex.onrender.com',  // Old domain
   // 'https://leveragex.in',            // New domain
   // 'https://leveragex-frontend.onrender.com',
-  'https://leveragex-605d.onrender.com',
+  'https://leveragex-kuxu.onrender.com',  // 11-jan-2025
   'http://localhost:3000'            // Local development environment
 ];
 
