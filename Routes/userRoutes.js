@@ -67,8 +67,6 @@ const getCurrentStockPrice = async (stockName, watchlistType = 1) => {
 };
 
 
-// Direct sell stock route
-// Direct sell stock route
 router.post('/sell', async (req, res) => {
   const { userId, stockName, quantity, watchlistType, autoSell = false } = req.body;
 
@@ -120,6 +118,45 @@ router.post('/sell', async (req, res) => {
   }
 });
 
+
+
+router.post('/liquidate', async (req, res) => {
+  const { userId, stockName, watchlistType } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const position = user.stocks.find((s) => s.stockName === stockName);
+    if (!position) {
+      return res.status(404).json({ message: 'Stock not found in portfolio' });
+    }
+
+    const buyPrice = Number(position.buyPrice);
+    if (!Number.isFinite(buyPrice) || buyPrice <= 0) {
+      return res.status(400).json({ message: 'Invalid purchase price on position' });
+    }
+
+    const currentPrice = await getCurrentStockPrice(stockName, watchlistType);
+    const liquidationPrice = buyPrice * 0.9;
+
+    if (!currentPrice || currentPrice > liquidationPrice) {
+      return res.status(400).json({ message: '10% liquidation threshold not met' });
+    }
+
+    user.balance = 0;
+    user.stocks = [];
+    await user.save();
+
+    res.status(200).json({
+      message: 'Account forcefully liquidated under platform 10% loss rule',
+      updatedBalance: 0,
+    });
+  } catch (error) {
+    console.error('Error liquidating account:', error);
+    res.status(500).json({ message: 'Error liquidating account', error: error.message });
+  }
+});
 
 
  

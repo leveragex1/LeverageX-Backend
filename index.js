@@ -120,8 +120,8 @@ app.get('/putBalance', async (req, res) => {
 });
 
 startPriceFluctuation([
-  { Model: WatchList1Stock, aField: 'watchlist1_A', bField: 'watchlist1_B' },
-  { Model: WatchList2Stock, aField: 'watchlist2_A', bField: 'watchlist2_B' },
+  { key: 'watchlist1', Model: WatchList1Stock, aField: 'watchlist1_A', bField: 'watchlist1_B' },
+  { key: 'watchlist2', Model: WatchList2Stock, aField: 'watchlist2_A', bField: 'watchlist2_B' },
 ]);
 
 app.listen(PORT, () => {

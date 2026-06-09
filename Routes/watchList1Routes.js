@@ -3,11 +3,49 @@ const router = express.Router();
 const WatchList1Stock = require('../Models/watchList1Model');
 const { buyStock } = require('../Controllers/watchList1Controller');
 const { validateStockFields } = require('../utils/stockValidation');
+const { setStockTrend, runTrendStep } = require('../Services/priceFluctuation');
 
 const parseNumber = (value) => {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
 };
+
+router.post('/trend/:id', async (req, res) => {
+    const { trend } = req.body;
+
+    if (trend !== 'up' && trend !== 'down') {
+        return res.status(400).json({ message: 'Trend must be "up" or "down".' });
+    }
+
+    setStockTrend('watchlist1', req.params.id, trend);
+
+    try {
+        await WatchList1Stock.findByIdAndUpdate(
+            req.params.id,
+            { $set: { priceTrend: trend } },
+            { new: true }
+        );
+
+        const updatedStock = await runTrendStep(
+            WatchList1Stock,
+            req.params.id,
+            'watchlist1'
+        );
+
+        if (!updatedStock) {
+            setStockTrend('watchlist1', req.params.id, null);
+            return res.status(404).json({ message: 'Stock not found' });
+        }
+
+        res.status(200).json({
+            message: `Price trend set to ${trend}`,
+            stock: updatedStock,
+        });
+    } catch (error) {
+        console.error('Error setting price trend:', error);
+        res.status(500).json({ message: 'Error setting price trend' });
+    }
+});
 
 // Fetch all stocks for WatchList1
 router.get('/', async (req, res) => {
