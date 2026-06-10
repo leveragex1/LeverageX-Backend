@@ -32,6 +32,10 @@ const UserSchema = new Schema({
         type: Number,
         default: 0
     },
+    isLiquidated: {
+        type: Boolean,
+        default: false,
+    },
     hasBoughtRapidPlan: {
         type: Boolean,
         default: false,  // User can buy the Rapid plan only once

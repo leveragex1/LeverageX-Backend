@@ -6,6 +6,11 @@ function isValidStockNumber(value) {
   return Number.isFinite(parsed) && parsed >= MIN_STOCK_VALUE && parsed <= MAX_STOCK_VALUE;
 }
 
+function isValidMarketPrice(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 && parsed <= MAX_STOCK_VALUE;
+}
+
 function validateStockFields({ price, a, b }) {
   if (!isValidStockNumber(price)) {
     return { ok: false, message: `Price must be between ${MIN_STOCK_VALUE} and ${MAX_STOCK_VALUE}.` };
@@ -29,6 +34,7 @@ module.exports = {
   MAX_STOCK_VALUE,
   MIN_STOCK_VALUE,
   isValidStockNumber,
+  isValidMarketPrice,
   validateStockFields,
   sanitizePrice,
 };

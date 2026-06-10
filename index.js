@@ -34,7 +34,10 @@ const allowedOrigins = [
   // 'https://leveragex-4p2t.onrender.com',
   'https://leveragex-oqsf.onrender.com',        // 31-may-2025
   'https://leveragex-rrf8.onrender.com',        // 1-aug-2025
-  'http://localhost:3000',            // Local development environment
+  'http://localhost:3000', 
+   'http://localhost:5173', // 👈 ADD THIS (VERY COMMON)
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173',           // Local development environment
 ];
 
 const corsOptions = {
@@ -121,7 +124,6 @@ app.get('/putBalance', async (req, res) => {
 
 startPriceFluctuation([
   { key: 'watchlist1', Model: WatchList1Stock, aField: 'watchlist1_A', bField: 'watchlist1_B' },
-  { key: 'watchlist2', Model: WatchList2Stock, aField: 'watchlist2_A', bField: 'watchlist2_B' },
 ]);
 
 app.listen(PORT, () => {

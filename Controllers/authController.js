@@ -52,9 +52,10 @@ const login = async (req, res) => {
                 message: "Login Success",
                 success: true,
                 jwtToken,
-                userId: user._id,       // Return userId in the response
-                email: user.email,      // Return email as well
-                fullName: user.fullName // Include fullName in the response
+                userId: user._id,
+                email: user.email,
+                fullName: user.fullName,
+                mobile: user.mobile,
             });
     } catch (err) {
         res.status(500)

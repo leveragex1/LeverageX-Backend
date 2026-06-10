@@ -12,8 +12,7 @@ const {
 } = require('../Controllers/userController');
 const User = require('../Models/userModel');
 const WatchList1Stock = require('../Models/watchList1Model');
-const WatchList2Stock = require('../Models/watchList2Model');
-const { isValidStockNumber } = require('../utils/stockValidation');
+const { isValidMarketPrice } = require('../utils/stockValidation');
 const router = express.Router();
 
 // Route to get all users (for admin or general use)
@@ -39,8 +38,9 @@ router.get('/stocks/:userId', async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     res.status(200).json({
-      stocks: user.stocks, // Assuming 'stocks' is an array in the User model
+      stocks: user.stocks,
       balance: user.balance,
+      isLiquidated: Boolean(user.isLiquidated),
     });
   } catch (error) {
     console.error('Error fetching user stocks:', error);
@@ -51,12 +51,11 @@ router.get('/stocks/:userId', async (req, res) => {
 // Route to sell a stock and update user balance and stocks
 router.post('/stocks/sell', sellStock);
 
-const getCurrentStockPrice = async (stockName, watchlistType = 1) => {
+const getCurrentStockPrice = async (stockName) => {
   try {
-    const Model = Number(watchlistType) === 2 ? WatchList2Stock : WatchList1Stock;
-    const stock = await Model.findOne({ name: stockName });
+    const stock = await WatchList1Stock.findOne({ name: stockName });
     const price = Number(stock?.price);
-    if (!isValidStockNumber(price)) {
+    if (!isValidMarketPrice(price)) {
       return null;
     }
     return price;
@@ -75,6 +74,10 @@ router.post('/sell', async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
+    if (user.isLiquidated) {
+      return res.status(403).json({ message: 'Account liquidated. Selling is not allowed.' });
+    }
+
     const stock = user.stocks.find((s) => s.stockName === stockName);
     if (!stock) {
       console.log("Stock not found in portfolio");
@@ -86,8 +89,8 @@ router.post('/sell', async (req, res) => {
       return res.status(400).json({ message: 'Not enough stock to sell' });
     }
 
-    const currentPrice = await getCurrentStockPrice(stockName, watchlistType);
-    if (!currentPrice) {
+    const currentPrice = await getCurrentStockPrice(stockName);
+    if (currentPrice === null) {
       console.log("Unable to retrieve stock price");
       return res.status(500).json({ message: 'Unable to retrieve stock price' });
     }
@@ -137,20 +140,22 @@ router.post('/liquidate', async (req, res) => {
       return res.status(400).json({ message: 'Invalid purchase price on position' });
     }
 
-    const currentPrice = await getCurrentStockPrice(stockName, watchlistType);
+    const currentPrice = await getCurrentStockPrice(stockName);
     const liquidationPrice = buyPrice * 0.9;
 
-    if (!currentPrice || currentPrice > liquidationPrice) {
+    if (currentPrice === null || currentPrice > liquidationPrice) {
       return res.status(400).json({ message: '10% liquidation threshold not met' });
     }
 
     user.balance = 0;
     user.stocks = [];
+    user.isLiquidated = true;
     await user.save();
 
     res.status(200).json({
       message: 'Account forcefully liquidated under platform 10% loss rule',
       updatedBalance: 0,
+      isLiquidated: true,
     });
   } catch (error) {
     console.error('Error liquidating account:', error);

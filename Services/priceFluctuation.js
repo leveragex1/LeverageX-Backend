@@ -1,10 +1,11 @@
 const { sanitizePrice, isValidStockNumber } = require('../utils/stockValidation');
+const { checkLiquidation } = require('./liquidationService');
 
 const TREND_TARGET_UP = 100000;
 const TREND_TARGET_DOWN = 0;
-const MIN_STEP = 0.5;
-const MAX_STEP = 1.5;
-const TREND_BIAS = 0.75;
+const TREND_BIAS = 0.88;
+const TREND_MIN_STEP = 0.03;
+const TREND_MAX_STEP = 0.12;
 
 const state = global.__leveragePriceState || (global.__leveragePriceState = {
   intervalId: null,
@@ -55,7 +56,7 @@ function roundPrice(value) {
 }
 
 function randomStep() {
-  return MIN_STEP + Math.random() * (MAX_STEP - MIN_STEP);
+  return TREND_MIN_STEP + Math.random() * (TREND_MAX_STEP - TREND_MIN_STEP);
 }
 
 function clampAroundTarget(price, target) {
@@ -73,7 +74,7 @@ function stepTrendingPrice(currentPrice, targetPrice) {
   const delta = randomStep();
   const distanceToTarget = targetPrice - currentPrice;
 
-  if (Math.abs(distanceToTarget) <= MIN_STEP) {
+  if (Math.abs(distanceToTarget) <= 0.01) {
     return targetPrice;
   }
 
@@ -86,12 +87,12 @@ function stepTrendingPrice(currentPrice, targetPrice) {
 
   if (targetPrice === TREND_TARGET_DOWN) {
     nextPrice = Math.max(TREND_TARGET_DOWN, nextPrice);
-    if (nextPrice <= MIN_STEP) {
+    if (nextPrice <= 0.01) {
       return TREND_TARGET_DOWN;
     }
   } else if (targetPrice === TREND_TARGET_UP) {
     nextPrice = Math.min(TREND_TARGET_UP, nextPrice);
-    if (nextPrice >= TREND_TARGET_UP - MIN_STEP) {
+    if (nextPrice >= TREND_TARGET_UP - 0.01) {
       return TREND_TARGET_UP;
     }
   }
@@ -124,6 +125,7 @@ async function applyTrendingPrice(stock, trend, watchlistKey) {
   }
 
   stock.price = nextPrice;
+  await checkLiquidation(stock.name, nextPrice);
   return stock;
 }
 
@@ -160,6 +162,7 @@ async function applyNormalFluctuation(stock, aField, bField) {
 
   stock.price = roundPrice(clampAroundTarget(currentPrice, B));
   await stock.save();
+  await checkLiquidation(stock.name, stock.price);
 }
 
 async function runTrendStep(Model, stockId, watchlistKey) {
@@ -174,6 +177,25 @@ async function runTrendStep(Model, stockId, watchlistKey) {
   }
 
   return applyTrendingPrice(stock, trend, watchlistKey);
+}
+
+async function setWatchlistTrend(watchlistKey, trend) {
+  const config = state.models.find((entry) => entry.key === watchlistKey);
+  if (!config) {
+    return { updated: 0 };
+  }
+
+  const stocks = await config.Model.find();
+  let updated = 0;
+
+  for (const stock of stocks) {
+    setStockTrend(watchlistKey, stock._id, trend);
+    await config.Model.findByIdAndUpdate(stock._id, { $set: { priceTrend: trend } });
+    await runTrendStep(config.Model, stock._id, watchlistKey);
+    updated += 1;
+  }
+
+  return { updated };
 }
 
 async function processActiveTrends() {
@@ -264,5 +286,6 @@ function startPriceFluctuation(models) {
 module.exports = {
   startPriceFluctuation,
   setStockTrend,
+  setWatchlistTrend,
   runTrendStep,
 };
